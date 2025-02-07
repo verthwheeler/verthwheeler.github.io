@@ -9,13 +9,13 @@
     <p id="message">Waiting for message...</p>
 
     <script>
-        const broker = "wss://test.mosquitto.org:8081/mqtt"; // Mosquitto WebSocket broker
+        const broker = "wss://broker.emqx.io:8084/mqtt"; // Public WebSocket MQTT broker
         const topic = "test/message"; // Must match ESP32 topic
 
         const client = mqtt.connect(broker);
 
         client.on("connect", function () {
-            console.log("Connected to Mosquitto MQTT Broker");
+            console.log("Connected to MQTT Broker");
             client.subscribe(topic);
         });
 
