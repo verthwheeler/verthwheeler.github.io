@@ -1,16 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ESP32 Message Receiver</title>
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-</head>
-<body>
-    <h2>ESP32 Messages</h2>
-    <p id="message">Waiting for message...</p>
-
-    <script><!DOCTYPE html>
-<html>
-<head>
     <title>Live EMG Data</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
@@ -114,23 +104,6 @@
         document.getElementById("startBtn").addEventListener("click", startRecording);
         document.getElementById("stopBtn").addEventListener("click", stopRecording);
         document.getElementById("downloadBtn").addEventListener("click", downloadCSV);
-    </script>
-</body>
-</html>
-
-        const broker = "wss://broker.emqx.io:8084/mqtt"; // Public WebSocket MQTT broker
-        const topic = "HumberSleepProject"; // Must match ESP32 topic
-
-        const client = mqtt.connect(broker);
-
-        client.on("connect", function () {
-            console.log("Connected to MQTT Broker");
-            client.subscribe(topic);
-        });
-
-        client.on("message", function (topic, message) {
-            document.getElementById("message").innerText = "Received: " + message.toString();
-        });
     </script>
 </body>
 </html>
