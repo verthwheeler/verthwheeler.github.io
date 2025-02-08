@@ -8,7 +8,116 @@
     <h2>ESP32 Messages</h2>
     <p id="message">Waiting for message...</p>
 
+    <script><!DOCTYPE html>
+<html>
+<head>
+    <title>Live EMG Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+    <h2>Live EMG Data (from ESP32)</h2>
+    <canvas id="emgChart" width="400" height="200"></canvas>
+
+    <br>
+    <button id="startBtn">Start Recording</button>
+    <button id="stopBtn" disabled>Stop Recording</button>
+    <button id="downloadBtn" disabled>Download CSV</button>
+
     <script>
+        const broker = "wss://broker.emqx.io:8084/mqtt"; // Public WebSocket MQTT Broker
+        const topic = "esp32/emg"; // Change this to match your ESP32 topic
+        let emgData = [];
+        let labels = [];
+        let isRecording = false;
+        const maxDataPoints = 50;
+
+        // MQTT Client Setup
+        const client = mqtt.connect(broker);
+
+        client.on("connect", function () {
+            console.log("Connected to MQTT Broker");
+            client.subscribe(topic);
+        });
+
+        client.on("message", function (receivedTopic, message) {
+            if (receivedTopic === topic) {
+                let emgValue = parseFloat(message.toString());
+                console.log("Received EMG Data:", emgValue);
+                updateChart(emgValue);
+            }
+        });
+
+        const ctx = document.getElementById("emgChart").getContext("2d");
+        const chart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "EMG Signal",
+                    data: emgData,
+                    borderColor: "red",
+                    borderWidth: 2,
+                    fill: false
+                }]
+            },
+            options: {
+                scales: {
+                    x: { display: false },
+                    y: { min: 0, max: 100 }
+                }
+            }
+        });
+
+        function updateChart(emgValue) {
+            if (!isRecording) return;
+
+            let timestamp = new Date().toISOString();
+            if (labels.length >= maxDataPoints) {
+                labels.shift();
+                emgData.shift();
+            }
+
+            labels.push(timestamp);
+            emgData.push(emgValue);
+            chart.update();
+        }
+
+        function startRecording() {
+            isRecording = true;
+            document.getElementById("startBtn").disabled = true;
+            document.getElementById("stopBtn").disabled = false;
+            document.getElementById("downloadBtn").disabled = true;
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            document.getElementById("startBtn").disabled = false;
+            document.getElementById("stopBtn").disabled = true;
+            document.getElementById("downloadBtn").disabled = false;
+        }
+
+        function downloadCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Time,EMG Value\n";
+            for (let i = 0; i < emgData.length; i++) {
+                csvContent += `${labels[i]},${emgData[i]}\n`;
+            }
+
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "emg_data.csv");
+            document.body.appendChild(link);
+            link.click();
+        }
+
+        document.getElementById("startBtn").addEventListener("click", startRecording);
+        document.getElementById("stopBtn").addEventListener("click", stopRecording);
+        document.getElementById("downloadBtn").addEventListener("click", downloadCSV);
+    </script>
+</body>
+</html>
+
         const broker = "wss://broker.emqx.io:8084/mqtt"; // Public WebSocket MQTT broker
         const topic = "HumberSleepProject"; // Must match ESP32 topic
 
