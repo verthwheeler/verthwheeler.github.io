@@ -1,130 +1,77 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live EMG Data</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
 <body>
-    <h2>Live EMG Data (from ESP32)</h2>
-    <canvas id="emgChart" width="400" height="200"></canvas>
 
-    <br>
-    <button id="startBtn">Start Recording</button>
-    <button id="stopBtn" disabled>Stop Recording</button>
-    <button id="downloadBtn" disabled>Download CSV</button>
+<h2>Live EMG Data from ESP32</h2>
+<canvas id="emgChart" width="400" height="200"></canvas>
 
-    <script>
-        const broker = "wss://broker.emqx.io:8084/mqtt"; // Public WebSocket MQTT Broker
-        const topic = "esp32/emg"; // Change this to match your ESP32 topic
-        let emgData = [];
-        let labels = [];
-        let isRecording = false;
-        const maxDataPoints = 50;
+<script>
+    const broker = "ws://192.168.1.10:1883";  // Local MQTT Broker IP (use WebSockets)
+    const topic = "esp32/emg";  // Topic to subscribe to for EMG data
 
-        // MQTT Client Setup
-        const client = mqtt.connect(broker);
+    let emgData = [];
+    let labels = [];
 
-        client.on("connect", function () {
-            console.log("Connected to MQTT Broker");
-            client.subscribe(topic);
-        });
+    // MQTT Client Setup
+    const client = mqtt.connect(broker);
 
-        client.on("message", function (receivedTopic, message) {
-            if (receivedTopic === topic) {
-                let emgValue = parseFloat(message.toString());
-                console.log("Received EMG Data:", emgValue);
-                updateChart(emgValue);
-            }
-        });
+    client.on("connect", function () {
+        console.log("Connected to MQTT Broker");
+        client.subscribe(topic); // Subscribe to the EMG topic
+    });
 
-        client.on("close", function () {
-            console.log("MQTT Disconnected. Attempting Reconnect...");
-            setTimeout(() => client.reconnect(), 3000);
-        });
+    client.on("message", function (receivedTopic, message) {
+        if (receivedTopic === topic) {
+            let emgValue = parseFloat(message.toString());
+            console.log("Received EMG Data:", emgValue);
+            updateChart(emgValue);
+        }
+    });
 
-
-        const ctx = document.getElementById("emgChart").getContext("2d");
-const chart = new Chart(ctx, {
-    type: "line",
-    data: {
-        labels: labels,
-        datasets: [{
-            label: "EMG Signal",
-            data: emgData,
-            borderColor: "red",
-            backgroundColor: "rgba(255, 0, 0, 0.3)", // Slight fill for EMG effect
-            borderWidth: 2,
-            fill: true,
-            tension: 0.1 // Creates slight randomness in the curve
-        }]
-    },
-    options: {
-        responsive: true,
-        animation: false, // Disable animation for real-time effect
-        elements: {
-            point: { radius: 0 } // No dots on the EMG waveform
+    // Chart.js Setup
+    const ctx = document.getElementById("emgChart").getContext("2d");
+    const chart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "EMG Signal",
+                data: emgData,
+                borderColor: "red",
+                borderWidth: 2,
+                fill: false
+            }]
         },
-        scales: {
-            x: { display: false }, // Hide X-axis labels
-            y: {
-                min: -100, // Adjust range to match EMG signal behavior
-                max: 100,
-                grid: { color: "rgba(200, 200, 200, 0.5)" }
+        options: {
+            scales: {
+                x: { display: false },
+                y: { min: 0, max: 100 }
             }
         }
+    });
+
+    // Update chart with new data
+    function updateChart(emgValue) {
+        let timestamp = new Date().toISOString();
+        
+        // Keep data length under 50 points
+        if (labels.length >= 50) {
+            labels.shift();
+            emgData.shift();
+        }
+
+        labels.push(timestamp);
+        emgData.push(emgValue);
+        chart.update();
     }
-});
+</script>
 
-
-        function updateChart(emgValue) {
-    if (!isRecording) return;
-
-    let timestamp = new Date().toISOString();
-    if (labels.length >= maxDataPoints) {
-        labels.shift();
-        emgData.shift();
-    }
-
-    labels.push(timestamp);
-    emgData.push(emgValue);
-
-    requestAnimationFrame(() => chart.update()); // Smoother updates
-}
-
-        function startRecording() {
-            isRecording = true;
-            document.getElementById("startBtn").disabled = true;
-            document.getElementById("stopBtn").disabled = false;
-            document.getElementById("downloadBtn").disabled = true;
-        }
-
-        function stopRecording() {
-            isRecording = false;
-            document.getElementById("startBtn").disabled = false;
-            document.getElementById("stopBtn").disabled = true;
-            document.getElementById("downloadBtn").disabled = false;
-        }
-
-        function downloadCSV() {
-            let csvContent = "Time,EMG Value\n";
-            for (let i = 0; i < emgData.length; i++) {
-            csvContent += `${labels[i]},${emgData[i]}\n`;
-            }
-
-        let blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        let link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "emg_data.csv";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        }
-
-
-        document.getElementById("startBtn").addEventListener("click", startRecording);
-        document.getElementById("stopBtn").addEventListener("click", stopRecording);
-        document.getElementById("downloadBtn").addEventListener("click", downloadCSV);
-    </script>
 </body>
 </html>
