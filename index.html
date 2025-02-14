@@ -38,6 +38,12 @@
             }
         });
 
+        client.on("close", function () {
+            console.log("MQTT Disconnected. Attempting Reconnect...");
+            setTimeout(() => client.reconnect(), 3000);
+        });
+
+
         const ctx = document.getElementById("emgChart").getContext("2d");
         const chart = new Chart(ctx, {
             type: "line",
@@ -60,18 +66,19 @@
         });
 
         function updateChart(emgValue) {
-            if (!isRecording) return;
+    if (!isRecording) return;
 
-            let timestamp = new Date().toISOString();
-            if (labels.length >= maxDataPoints) {
-                labels.shift();
-                emgData.shift();
-            }
+    let timestamp = new Date().toISOString();
+    if (labels.length >= maxDataPoints) {
+        labels.shift();
+        emgData.shift();
+    }
 
-            labels.push(timestamp);
-            emgData.push(emgValue);
-            chart.update();
-        }
+    labels.push(timestamp);
+    emgData.push(emgValue);
+
+    requestAnimationFrame(() => chart.update()); // Smoother updates
+}
 
         function startRecording() {
             isRecording = true;
@@ -88,18 +95,20 @@
         }
 
         function downloadCSV() {
-            let csvContent = "data:text/csv;charset=utf-8,Time,EMG Value\n";
+            let csvContent = "Time,EMG Value\n";
             for (let i = 0; i < emgData.length; i++) {
-                csvContent += `${labels[i]},${emgData[i]}\n`;
+            csvContent += `${labels[i]},${emgData[i]}\n`;
             }
 
-            let encodedUri = encodeURI(csvContent);
-            let link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "emg_data.csv");
-            document.body.appendChild(link);
-            link.click();
+        let blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        let link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "emg_data.csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         }
+
 
         document.getElementById("startBtn").addEventListener("click", startRecording);
         document.getElementById("stopBtn").addEventListener("click", stopRecording);
