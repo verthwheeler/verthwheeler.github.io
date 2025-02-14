@@ -45,25 +45,37 @@
 
 
         const ctx = document.getElementById("emgChart").getContext("2d");
-        const chart = new Chart(ctx, {
-            type: "line",
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: "EMG Signal",
-                    data: emgData,
-                    borderColor: "red",
-                    borderWidth: 2,
-                    fill: false
-                }]
-            },
-            options: {
-                scales: {
-                    x: { display: false },
-                    y: { min: 0, max: 100 }
-                }
+const chart = new Chart(ctx, {
+    type: "line",
+    data: {
+        labels: labels,
+        datasets: [{
+            label: "EMG Signal",
+            data: emgData,
+            borderColor: "red",
+            backgroundColor: "rgba(255, 0, 0, 0.3)", // Slight fill for EMG effect
+            borderWidth: 2,
+            fill: true,
+            tension: 0.1 // Creates slight randomness in the curve
+        }]
+    },
+    options: {
+        responsive: true,
+        animation: false, // Disable animation for real-time effect
+        elements: {
+            point: { radius: 0 } // No dots on the EMG waveform
+        },
+        scales: {
+            x: { display: false }, // Hide X-axis labels
+            y: {
+                min: -100, // Adjust range to match EMG signal behavior
+                max: 100,
+                grid: { color: "rgba(200, 200, 200, 0.5)" }
             }
-        });
+        }
+    }
+});
+
 
         function updateChart(emgValue) {
     if (!isRecording) return;
