@@ -102,7 +102,7 @@
        function downloadCSV() {
            let csvContent = "data:text/csv;charset=utf-8,Time,EMG Value\n";
            for (let i = 0; i < emgData.length; i++) {
-               csvContent += ${labels[i]},${emgData[i]}\n;
+               csvContent += `${labels[i]},${emgData[i]}\n`;
            }
 
 
