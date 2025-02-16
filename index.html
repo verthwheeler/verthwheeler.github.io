@@ -37,13 +37,15 @@
 
        client.on("message", function (receivedTopic, message) {
     if (receivedTopic === topic) {
-        let emgValues = message.toString().split(",").map(parseFloat); // Convert to array of floats
-        console.log("Received EMG Data:", emgValues);
-        emgValues.forEach(updateChart); // Process each value
+        let rawData = message.toString();
+        console.log("Raw MQTT Message:", rawData); // Debugging output
+
+        let emgValues = rawData.split(",").map(Number).filter(n => !isNaN(n)); // Convert string to numbers
+        console.log("Parsed EMG Data:", emgValues); // Debugging output
+
+        emgValues.forEach(updateChart);
     }
 });
-
-
 
        const ctx = document.getElementById("emgChart").getContext("2d");
        const chart = new Chart(ctx, {
@@ -68,20 +70,21 @@
 
 
        function updateChart(emgValue) {
-           if (!isRecording) return;
+    if (!isRecording) return;
 
+    let timestamp = new Date().toISOString();
 
-           let timestamp = new Date().toISOString();
-           if (labels.length >= maxDataPoints) {
-               labels.shift();
-               emgData.shift();
-           }
+    if (labels.length >= maxDataPoints) {
+        labels.splice(0, emgValue.length); // Remove old values
+        emgData.splice(0, emgValue.length);
+    }
 
+    labels.push(...new Array(emgValue.length).fill(timestamp)); // Add timestamps
+    emgData.push(...emgValue); // Add multiple samples at once
 
-           labels.push(timestamp);
-           emgData.push(emgValue);
-           chart.update();
-       }
+    chart.update();
+}
+
 
 
        function startRecording() {
