@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-   <title>Live EMG Data - 500 samples</title>
+   <title>Live EMG Data</title>
    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
@@ -9,43 +9,38 @@
    <h2>Live EMG Data (from ESP32)</h2>
    <canvas id="emgChart" width="400" height="200"></canvas>
 
-
    <br>
    <button id="startBtn">Start Recording</button>
    <button id="stopBtn" disabled>Stop Recording</button>
    <button id="downloadBtn" disabled>Download CSV</button>
 
-
    <script>
        const broker = "wss://broker.emqx.io:8084/mqtt"; // Public WebSocket MQTT Broker
-       const topic = "esp32/emg"; // Change this to match your ESP32 topic
+       const topic = "esp32/emg"; // Must match ESP32 topic
        let emgData = [];
        let labels = [];
        let isRecording = false;
        const maxDataPoints = 500;
 
-
        // MQTT Client Setup
        const client = mqtt.connect(broker);
-
 
        client.on("connect", function () {
            console.log("Connected to MQTT Broker");
            client.subscribe(topic);
        });
 
-
        client.on("message", function (receivedTopic, message) {
-    if (receivedTopic === topic) {
-        let rawData = message.toString();
-        console.log("Raw MQTT Message:", rawData); // Debugging output
+           if (receivedTopic === topic) {
+               let rawData = message.toString();
+               console.log("Raw MQTT Message:", rawData); // Debugging output
 
-        let emgValues = rawData.split(",").map(Number).filter(n => !isNaN(n)); // Convert string to numbers
-        console.log("Parsed EMG Data:", emgValues); // Debugging output
+               let emgValues = rawData.split(",").map(Number).filter(n => !isNaN(n)); // Convert string to array of numbers
+               console.log("Parsed EMG Data:", emgValues); // Debugging output
 
-        emgValues.forEach(updateChart);
-    }
-});
+               updateChart(emgValues);
+           }
+       });
 
        const ctx = document.getElementById("emgChart").getContext("2d");
        const chart = new Chart(ctx, {
@@ -68,24 +63,21 @@
            }
        });
 
+       function updateChart(emgValues) {
+           if (!isRecording) return;
 
-       function updateChart(emgValue) {
-    if (!isRecording) return;
+           let timestamp = new Date().toISOString();
 
-    let timestamp = new Date().toISOString();
+           if (labels.length >= maxDataPoints) {
+               labels.splice(0, emgValues.length); // Remove old values
+               emgData.splice(0, emgValues.length);
+           }
 
-    if (labels.length >= maxDataPoints) {
-        labels.splice(0, emgValue.length); // Remove old values
-        emgData.splice(0, emgValue.length);
-    }
+           labels.push(...new Array(emgValues.length).fill(timestamp)); // Add multiple timestamps
+           emgData.push(...emgValues); // Add multiple samples at once
 
-    labels.push(...new Array(emgValue.length).fill(timestamp)); // Add timestamps
-    emgData.push(...emgValue); // Add multiple samples at once
-
-    chart.update();
-}
-
-
+           chart.update();
+       }
 
        function startRecording() {
            isRecording = true;
@@ -94,7 +86,6 @@
            document.getElementById("downloadBtn").disabled = true;
        }
 
-
        function stopRecording() {
            isRecording = false;
            document.getElementById("startBtn").disabled = false;
@@ -102,13 +93,11 @@
            document.getElementById("downloadBtn").disabled = false;
        }
 
-
        function downloadCSV() {
            let csvContent = "data:text/csv;charset=utf-8,Time,EMG Value\n";
            for (let i = 0; i < emgData.length; i++) {
                csvContent += `${labels[i]},${emgData[i]}\n`;
            }
-
 
            let encodedUri = encodeURI(csvContent);
            let link = document.createElement("a");
@@ -117,7 +106,6 @@
            document.body.appendChild(link);
            link.click();
        }
-
 
        document.getElementById("startBtn").addEventListener("click", startRecording);
        document.getElementById("stopBtn").addEventListener("click", stopRecording);
