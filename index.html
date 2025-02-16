@@ -9,10 +9,12 @@
    <h2>Live EMG Data (from ESP32)</h2>
    <canvas id="emgChart" width="400" height="200"></canvas>
 
+
    <br>
    <button id="startBtn">Start Recording</button>
    <button id="stopBtn" disabled>Stop Recording</button>
    <button id="downloadBtn" disabled>Download CSV</button>
+
 
    <script>
        const broker = "wss://broker.emqx.io:8084/mqtt"; // Public WebSocket MQTT Broker
@@ -20,34 +22,27 @@
        let emgData = [];
        let labels = [];
        let isRecording = false;
-       const maxDataPoints = 500;
+       const maxDataPoints = 50;
+
 
        // MQTT Client Setup
        const client = mqtt.connect(broker);
 
+
        client.on("connect", function () {
            console.log("Connected to MQTT Broker");
-           client.subscribe(topic, function (err) {
-               if (!err) {
-                   console.log("Subscribed to topic: " + topic);
-               } else {
-                   console.error("Failed to subscribe to topic: " + topic);
-               }
-           });
+           client.subscribe(topic);
        });
+
 
        client.on("message", function (receivedTopic, message) {
            if (receivedTopic === topic) {
-               console.log("Received raw message:", message.toString());
-               try {
-                   let emgValues = JSON.parse(message.toString());
-                   console.log("Received EMG Data:", emgValues);
-                   updateChart(emgValues);
-               } catch (error) {
-                   console.error("Failed to parse message:", error);
-               }
+               let emgValue = parseFloat(message.toString());
+               console.log("Received EMG Data:", emgValue);
+               updateChart(emgValue);
            }
        });
+
 
        const ctx = document.getElementById("emgChart").getContext("2d");
        const chart = new Chart(ctx, {
@@ -70,21 +65,23 @@
            }
        });
 
-       function updateChart(emgValues) {
+
+       function updateChart(emgValue) {
            if (!isRecording) return;
 
-           for (let i = 0; i < emgValues.length; i++) {
-               let timestamp = new Date().toISOString();
-               if (labels.length >= maxDataPoints) {
-                   labels.shift();
-                   emgData.shift();
-               }
 
-               labels.push(timestamp);
-               emgData.push(emgValues[i]);
+           let timestamp = new Date().toISOString();
+           if (labels.length >= maxDataPoints) {
+               labels.shift();
+               emgData.shift();
            }
+
+
+           labels.push(timestamp);
+           emgData.push(emgValue);
            chart.update();
        }
+
 
        function startRecording() {
            isRecording = true;
@@ -93,6 +90,7 @@
            document.getElementById("downloadBtn").disabled = true;
        }
 
+
        function stopRecording() {
            isRecording = false;
            document.getElementById("startBtn").disabled = false;
@@ -100,11 +98,13 @@
            document.getElementById("downloadBtn").disabled = false;
        }
 
+
        function downloadCSV() {
            let csvContent = "data:text/csv;charset=utf-8,Time,EMG Value\n";
            for (let i = 0; i < emgData.length; i++) {
-               csvContent += `${labels[i]},${emgData[i]}\n`;
+               csvContent += ${labels[i]},${emgData[i]}\n;
            }
+
 
            let encodedUri = encodeURI(csvContent);
            let link = document.createElement("a");
@@ -113,6 +113,7 @@
            document.body.appendChild(link);
            link.click();
        }
+
 
        document.getElementById("startBtn").addEventListener("click", startRecording);
        document.getElementById("stopBtn").addEventListener("click", stopRecording);
