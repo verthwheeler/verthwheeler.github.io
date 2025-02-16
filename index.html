@@ -22,7 +22,7 @@
        let emgData = [];
        let labels = [];
        let isRecording = false;
-       const maxDataPoints = 50;
+       const maxDataPoints = 500;
 
 
        // MQTT Client Setup
@@ -36,12 +36,13 @@
 
 
        client.on("message", function (receivedTopic, message) {
-           if (receivedTopic === topic) {
-               let emgValue = parseFloat(message.toString());
-               console.log("Received EMG Data:", emgValue);
-               updateChart(emgValue);
-           }
-       });
+    if (receivedTopic === topic) {
+        let emgValues = message.toString().split(",").map(parseFloat); // Convert to array of floats
+        console.log("Received EMG Data:", emgValues);
+        emgValues.forEach(updateChart); // Process each value
+    }
+});
+
 
 
        const ctx = document.getElementById("emgChart").getContext("2d");
