@@ -16,7 +16,7 @@
 
    <script>
        const broker = "wss://broker.emqx.io:8084/mqtt"; // Public WebSocket MQTT Broker
-       const topic = "esp32/emg"; // Must match ESP32 topic
+       const topic = "esp32/emg"; // Change this to match your ESP32 topic
        let emgData = [];
        let labels = [];
        let isRecording = false;
@@ -32,12 +32,8 @@
 
        client.on("message", function (receivedTopic, message) {
            if (receivedTopic === topic) {
-               let rawData = message.toString();
-               console.log("Raw MQTT Message:", rawData); // Debugging output
-
-               let emgValues = rawData.split(",").map(Number).filter(n => !isNaN(n)); // Convert string to array of numbers
-               console.log("Parsed EMG Data:", emgValues); // Debugging output
-
+               let emgValues = JSON.parse(message.toString());
+               console.log("Received EMG Data:", emgValues);
                updateChart(emgValues);
            }
        });
@@ -66,16 +62,16 @@
        function updateChart(emgValues) {
            if (!isRecording) return;
 
-           let timestamp = new Date().toISOString();
+           for (let i = 0; i < emgValues.length; i++) {
+               let timestamp = new Date().toISOString();
+               if (labels.length >= maxDataPoints) {
+                   labels.shift();
+                   emgData.shift();
+               }
 
-           if (labels.length >= maxDataPoints) {
-               labels.splice(0, emgValues.length); // Remove old values
-               emgData.splice(0, emgValues.length);
+               labels.push(timestamp);
+               emgData.push(emgValues[i]);
            }
-
-           labels.push(...new Array(emgValues.length).fill(timestamp)); // Add multiple timestamps
-           emgData.push(...emgValues); // Add multiple samples at once
-
            chart.update();
        }
 
