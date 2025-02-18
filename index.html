@@ -17,10 +17,12 @@
    <script>
        const broker = "wss://broker.emqx.io:8084/mqtt"; // Public WebSocket MQTT Broker
        const topic = "esp32/emg"; // Change this to match your ESP32 topic
-       let emgData = [];
+       let emgData = []; // Stores all received data for CSV download
+       let chartData = []; // Stores limited data for chart visualization
        let labels = [];
+       let allTimestamps = []; // Stores all timestamps for CSV export
        let isRecording = false;
-       const maxDataPoints = 50;
+       const maxDataPoints = 50; // Chart display limit
 
        // MQTT Client Setup
        const client = mqtt.connect(broker);
@@ -34,7 +36,7 @@
            if (receivedTopic === topic) {
                let emgValues = JSON.parse(message.toString());
                console.log("Received EMG Data:", emgValues);
-               emgValues.forEach(emgValue => updateChart(emgValue));
+               emgValues.forEach(emgValue => processEMGData(emgValue));
            }
        });
 
@@ -45,7 +47,7 @@
                labels: labels,
                datasets: [{
                    label: "EMG Signal",
-                   data: emgData,
+                   data: chartData,
                    borderColor: "red",
                    borderWidth: 2,
                    fill: false
@@ -59,17 +61,21 @@
            }
        });
 
-       function updateChart(emgValue) {
+       function processEMGData(emgValue) {
            if (!isRecording) return;
 
            let timestamp = new Date().toISOString();
-           if (labels.length >= maxDataPoints) {
+           emgData.push(emgValue); // Store full history
+           allTimestamps.push(timestamp);
+
+           // Maintain a limited dataset for chart display
+           if (chartData.length >= maxDataPoints) {
                labels.shift();
-               emgData.shift();
+               chartData.shift();
            }
 
            labels.push(timestamp);
-           emgData.push(emgValue);
+           chartData.push(emgValue);
            chart.update();
        }
 
@@ -90,7 +96,7 @@
        function downloadCSV() {
            let csvContent = "data:text/csv;charset=utf-8,Time,EMG Value\n";
            for (let i = 0; i < emgData.length; i++) {
-               csvContent += `${labels[i]},${emgData[i]}\n`;
+               csvContent += `${allTimestamps[i]},${emgData[i]}\n`;
            }
 
            let encodedUri = encodeURI(csvContent);
