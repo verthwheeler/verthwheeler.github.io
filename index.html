@@ -1,115 +1,142 @@
 <!DOCTYPE html>
 <html>
 <head>
-   <title>Live EMG Data</title>
-   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <title>Live Sensor Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
 <body>
-   <h2>Live EMG Data (from ESP32)</h2>
-   <canvas id="emgChart" width="400" height="200"></canvas>
+    <h2>Live Sensor Data (from ESP32)</h2>
 
-   <br>
-   <button id="startBtn">Start Recording</button>
-   <button id="stopBtn" disabled>Stop Recording</button>
-   <button id="downloadBtn" disabled>Download CSV</button>
+    <!-- EMG Chart -->
+    <canvas id="emgChart" width="400" height="200"></canvas>
 
-   <script>
-       const broker = "wss://broker.emqx.io:8084/mqtt"; // Public WebSocket MQTT Broker
-       const topic = "esp32/emg"; // Change this to match your ESP32 topic
-       let emgData = []; // Stores all received data for CSV download
-       let chartData = []; // Stores limited data for chart visualization
-       let labels = [];
-       let allTimestamps = []; // Stores all timestamps for CSV export
-       let isRecording = false;
-       const maxDataPoints = 50; // Chart display limit
+    <!-- Accelerometer Chart -->
+    <canvas id="accelChart" width="400" height="200"></canvas>
 
-       // MQTT Client Setup
-       const client = mqtt.connect(broker);
+    <br>
+    <button id="startBtn">Start Recording</button>
+    <button id="stopBtn" disabled>Stop Recording</button>
+    <button id="downloadBtn" disabled>Download CSV</button>
 
-       client.on("connect", function () {
-           console.log("Connected to MQTT Broker");
-           client.subscribe(topic);
-       });
+    <script>
+        const broker = "wss://broker.emqx.io:8084/mqtt"; // Public WebSocket MQTT Broker
+        const topic = "esp32/sensors"; // Match the topic from ESP32
+        let isRecording = false;
 
-       client.on("message", function (receivedTopic, message) {
-           if (receivedTopic === topic) {
-               let emgValues = JSON.parse(message.toString());
-               console.log("Received EMG Data:", emgValues);
-               emgValues.forEach(emgValue => processEMGData(emgValue));
-           }
-       });
+        let emgData = [], accelXData = [], accelYData = [], accelZData = [], labels = [];
+        const maxDataPoints = 500; // Store 500 samples at a time
 
-       const ctx = document.getElementById("emgChart").getContext("2d");
-       const chart = new Chart(ctx, {
-           type: "line",
-           data: {
-               labels: labels,
-               datasets: [{
-                   label: "EMG Signal",
-                   data: chartData,
-                   borderColor: "red",
-                   borderWidth: 2,
-                   fill: false
-               }]
-           },
-           options: {
-               scales: {
-                   x: { display: false },
-                   y: { min: 0, max: 100 }
-               }
-           }
-       });
+        // MQTT Client Setup
+        const client = mqtt.connect(broker);
+        client.on("connect", function () {
+            console.log("Connected to MQTT Broker");
+            client.subscribe(topic);
+        });
 
-       function processEMGData(emgValue) {
-           if (!isRecording) return;
+        client.on("message", function (receivedTopic, message) {
+            if (receivedTopic === topic) {
+                let data = JSON.parse(message.toString());
+                console.log("Received Data:", data);
+                updateCharts(data);
+            }
+        });
 
-           let timestamp = new Date().toISOString();
-           emgData.push(emgValue); // Store full history
-           allTimestamps.push(timestamp);
+        // Initialize Charts
+        const emgCtx = document.getElementById("emgChart").getContext("2d");
+        const accelCtx = document.getElementById("accelChart").getContext("2d");
 
-           // Maintain a limited dataset for chart display
-           if (chartData.length >= maxDataPoints) {
-               labels.shift();
-               chartData.shift();
-           }
+        const emgChart = new Chart(emgCtx, {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "EMG Signal",
+                    data: emgData,
+                    borderColor: "red",
+                    borderWidth: 2,
+                    fill: false
+                }]
+            },
+            options: {
+                scales: {
+                    x: { display: false },
+                    y: { min: 0, max: 100 }
+                }
+            }
+        });
 
-           labels.push(timestamp);
-           chartData.push(emgValue);
-           chart.update();
-       }
+        const accelChart = new Chart(accelCtx, {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: "Accel X", data: accelXData, borderColor: "blue", borderWidth: 2, fill: false },
+                    { label: "Accel Y", data: accelYData, borderColor: "green", borderWidth: 2, fill: false },
+                    { label: "Accel Z", data: accelZData, borderColor: "orange", borderWidth: 2, fill: false }
+                ]
+            },
+            options: {
+                scales: {
+                    x: { display: false },
+                    y: { min: -10, max: 10 }
+                }
+            }
+        });
 
-       function startRecording() {
-           isRecording = true;
-           document.getElementById("startBtn").disabled = true;
-           document.getElementById("stopBtn").disabled = false;
-           document.getElementById("downloadBtn").disabled = true;
-       }
+        function updateCharts(data) {
+            if (!isRecording) return;
 
-       function stopRecording() {
-           isRecording = false;
-           document.getElementById("startBtn").disabled = false;
-           document.getElementById("stopBtn").disabled = true;
-           document.getElementById("downloadBtn").disabled = false;
-       }
+            let timestamp = new Date().toISOString();
+            if (labels.length >= maxDataPoints) {
+                labels.shift();
+                emgData.shift();
+                accelXData.shift();
+                accelYData.shift();
+                accelZData.shift();
+            }
 
-       function downloadCSV() {
-           let csvContent = "data:text/csv;charset=utf-8,Time,EMG Value\n";
-           for (let i = 0; i < emgData.length; i++) {
-               csvContent += `${allTimestamps[i]},${emgData[i]}\n`;
-           }
+            labels.push(timestamp);
+            emgData.push(data.emg);
+            accelXData.push(data.accel_x);
+            accelYData.push(data.accel_y);
+            accelZData.push(data.accel_z);
 
-           let encodedUri = encodeURI(csvContent);
-           let link = document.createElement("a");
-           link.setAttribute("href", encodedUri);
-           link.setAttribute("download", "emg_data.csv");
-           document.body.appendChild(link);
-           link.click();
-       }
+            emgChart.update();
+            accelChart.update();
+        }
 
-       document.getElementById("startBtn").addEventListener("click", startRecording);
-       document.getElementById("stopBtn").addEventListener("click", stopRecording);
-       document.getElementById("downloadBtn").addEventListener("click", downloadCSV);
-   </script>
+        function startRecording() {
+            isRecording = true;
+            document.getElementById("startBtn").disabled = true;
+            document.getElementById("stopBtn").disabled = false;
+            document.getElementById("downloadBtn").disabled = true;
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            document.getElementById("startBtn").disabled = false;
+            document.getElementById("stopBtn").disabled = true;
+            document.getElementById("downloadBtn").disabled = false;
+        }
+
+        function downloadCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Time,EMG,Accel_X,Accel_Y,Accel_Z\n";
+            for (let i = 0; i < emgData.length; i++) {
+                csvContent += `${labels[i]},${emgData[i]},${accelXData[i]},${accelYData[i]},${accelZData[i]}\n`;
+            }
+
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "sensor_data.csv");
+            document.body.appendChild(link);
+            link.click();
+        }
+
+        document.getElementById("startBtn").addEventListener("click", startRecording);
+        document.getElementById("stopBtn").addEventListener("click", stopRecording);
+        document.getElementById("downloadBtn").addEventListener("click", downloadCSV);
+    </script>
 </body>
 </html>
