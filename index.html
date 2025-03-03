@@ -20,7 +20,7 @@
     <button id="downloadBtn" disabled>Download CSV</button>
 
     <script>
-        const broker = "wss://broker.emqx.io:8084/mqtt"; // Public WebSocket MQTT Broker
+        const broker = "ws://192.168.65.147:1883";  // Update with your ESP32 IP address
         const topic = "esp32/sensors"; // Match the topic from ESP32
         let isRecording = false;
 
