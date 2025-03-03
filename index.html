@@ -88,29 +88,22 @@
             if (!isRecording) return;
 
             let timestamp = new Date().toISOString();
-
-            // Check if data length is 15 (batch data)
-            if (data.emg.length === 15 && data.accel_x.length === 15) {
-                // If we've reached the max number of data points, remove the oldest
-                if (labels.length >= maxDataPoints) {
-                    labels.shift();
-                    emgData.shift();
-                    accelXData.shift();
-                    accelYData.shift();
-                    accelZData.shift();
-                }
-
-                // Add the new batch of data
-                labels.push(timestamp);
-                emgData.push(...data.emg);  // Add all 15 EMG values
-                accelXData.push(...data.accel_x);  // Add all 15 Accel X values
-                accelYData.push(...data.accel_y);  // Add all 15 Accel Y values
-                accelZData.push(...data.accel_z);  // Add all 15 Accel Z values
-
-                // Update the charts with the new data
-                emgChart.update();
-                accelChart.update();
+            if (labels.length >= maxDataPoints) {
+                labels.shift();
+                emgData.shift();
+                accelXData.shift();
+                accelYData.shift();
+                accelZData.shift();
             }
+
+            labels.push(timestamp);
+            emgData.push(data.emg);
+            accelXData.push(data.accel_x);
+            accelYData.push(data.accel_y);
+            accelZData.push(data.accel_z);
+
+            emgChart.update();
+            accelChart.update();
         }
 
         function startRecording() {
